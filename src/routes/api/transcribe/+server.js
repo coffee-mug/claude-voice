@@ -8,6 +8,12 @@ export async function POST({ request, platform }) {
     // Extract audio blob from the request
     const formData = await request.formData();
     const audioFile = formData.get('audio');
+    const url = new URL(request.url)
+    const params = new URLSearchParams(url.searchParams)
+
+    console.log(url)
+
+    console.log("Selected gender", params.get("gender"), "Selected language", params.get("language"))
     
     if (!audioFile) {
       return json({ error: 'No audio file provided' }, { status: 400 });

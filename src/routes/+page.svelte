@@ -2,13 +2,35 @@
     import AudioRecorder from '$lib/components/AudioRecorder.svelte';
     import ResponsePlayer from '$lib/components/ResponsePlayer.svelte';
     import ConversationHistory from '$lib/components/ConversationHistory.svelte';
+    import VoiceSelector from '$lib/components/VoiceSelector.svelte';
     
     // Using runes for state management
     let transcribedText = $state('');
     let responseText = $state('');
     let audioSrc = $state(null);
     let processingError = $state(null);
-    let showTranscript = $state(false);
+    let viewTranscript = $state(false);
+    
+    // Voice settings
+    let voiceSettings = $state({
+      language: 'en-US',
+      gender: 'FEMALE',
+      model: 'en-US-Neural2-F'
+    });
+    
+    // Update voice settings
+    function handleVoiceSettingsUpdate(settings) {
+      // Create a completely new object to avoid reference issues
+      voiceSettings = { ...settings };
+      console.log('Voice settings updated:', voiceSettings);
+    }
+    
+    // Debug helper to check runes functionality
+    function handleDebugClick() {
+      console.log("Debug button clicked");
+      console.log("Current voice settings:", voiceSettings);
+      console.log("Conversation history:", conversationHistory);
+    }
     
     // Conversation history using runes
     let conversationHistory = $state([]);
@@ -42,6 +64,15 @@
     function getConversationHistory() {
       return conversationHistory;
     }
+    
+    // Function to get voice settings
+    function getVoiceSettings() {
+      return {
+        language: voiceSettings.language,
+        gender: voiceSettings.gender,
+        model: voiceSettings.model
+      };
+    }
   </script>
   
   <svelte:head>
@@ -54,12 +85,25 @@
         <h1 class="text-2xl font-bold text-gray-800 mb-2">Voice Assistant MVP</h1>
         <p class="text-gray-600">Speak to me, and I'll respond with my voice</p>
         <p class="text-sm text-blue-600 mt-2">Just click the blue button to start recording, then click the square to stop</p>
+        <button 
+          onclick={handleDebugClick}
+          class="mt-2 px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300"
+        >
+          Debug Check
+        </button>
       </header>
+      
+      <VoiceSelector 
+        language={voiceSettings.language}
+        gender={voiceSettings.gender}
+        onUpdate={handleVoiceSettingsUpdate}
+      />
       
       <AudioRecorder 
         on:processingComplete={handleProcessingComplete}
         on:processingError={handleProcessingError}
         {getConversationHistory}
+        voiceSettings={voiceSettings}
       />
       
       {#if processingError}
@@ -74,15 +118,16 @@
         {responseText}
         {audioSrc}
       />
-      
-      {#if conversationHistory.length}
-        <button class="font-bold text-blue-600 my-4" onclick={() => showTranscript = !showTranscript}>{ showTranscript ? "Hide transcript" : "Show transcript" }</button>
+
+      {#if responseText}
+        <button class="my-4 font-bold text-blue-600" onclick={() => viewTranscript = !viewTranscript}>{ viewTranscript ? "Hide Transcript" : "View Transcript"}</button>
       {/if}
-      {#if showTranscript}
-        <ConversationHistory 
-            history={conversationHistory} 
-            {clearConversation}
-        />
+      
+      {#if viewTranscript}
+      <ConversationHistory 
+        history={conversationHistory} 
+        {clearConversation}
+      />
       {/if}
     </div>
   </main>

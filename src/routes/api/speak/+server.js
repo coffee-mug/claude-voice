@@ -27,10 +27,18 @@ function textToSSML(text) {
  */
 export async function POST({ request }) {
   try {
-    const { text } = await request.json();
-    
+    const { text, voiceSettings } = await request.json();
+
     if (!text || typeof text !== 'string') {
       throw error(400, 'Invalid or missing text');
+    }
+
+    
+
+    const whitelistedVoices = ['en-US-Neural2-F', 'en-US-Neural2-D', 'fr-FR-Neural2-A', 'fr-FR-Neural2-B'];
+
+    if (whitelistedVoices.indexOf(voiceSettings.model) === -1) {
+        throw error(400)
     }
     
     // Convert text to SSML format
@@ -47,9 +55,9 @@ export async function POST({ request }) {
           ssml
         },
         voice: {
-          languageCode: 'en-US',
-          name: 'en-US-Neural2-F',  // Female voice
-          ssmlGender: 'FEMALE'
+          languageCode: voiceSettings.language,
+          name: voiceSettings.model,  // Female voice
+          ssmlGender: voiceSettings.gender
         },
         audioConfig: {
           audioEncoding: 'MP3',
