@@ -2,6 +2,9 @@
     import { onMount, onDestroy } from 'svelte';
     import { createEventDispatcher } from 'svelte';
   
+    // Function to get conversation history from parent
+    export let getConversationHistory;
+  
     const dispatch = createEventDispatcher();
   
     let mediaRecorder;
@@ -30,8 +33,8 @@
               audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
               audioUrl = URL.createObjectURL(audioBlob);
               dispatch('recordingComplete', { audioBlob, audioUrl });
-
-              // Automatically start processing
+              
+              // Automatically start processing after recording stops
               processAudio();
             };
           })
@@ -69,9 +72,8 @@
         mediaRecorder.stop();
         isRecording = false;
         if (timer) clearInterval(timer);
-
+        
         dispatch('recordingStop');
-
       }
     }
   
@@ -104,7 +106,10 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ text })
+          body: JSON.stringify({ 
+            text,
+            conversationHistory: getConversationHistory()
+          })
         });
         
         if (!chatResponse.ok) {
@@ -175,9 +180,9 @@
       
       {#if audioUrl && !isRecording}
         <div class="w-full">
-          <audio controls src={audioUrl} class="w-full"></audio>
-
-            {#if isProcessing}
+          <audio controls src={audioUrl} class="w-full hidden"></audio>
+          
+          {#if isProcessing}
             <div class="mt-4 p-3 bg-blue-50 text-blue-700 rounded-md flex items-center justify-center">
               <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -185,8 +190,8 @@
               </svg>
               Processing your audio...
             </div>
-            {/if}
+          {/if}
         </div>
-    {/if}
+      {/if}
     </div>
   </div>

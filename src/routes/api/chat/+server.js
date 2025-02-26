@@ -6,11 +6,23 @@ import { CLAUDE_API_KEY } from '$env/static/private';
  */
 export async function POST({ request }) {
   try {
-    const { text } = await request.json();
+    const { text, conversationHistory = [] } = await request.json();
     
     if (!text || typeof text !== 'string') {
       return json({ error: 'Invalid or missing text' }, { status: 400 });
     }
+    
+    // Format the messages array with conversation history
+    const messages = [
+      ...conversationHistory.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      {
+        role: 'user',
+        content: text
+      }
+    ];
     
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -21,16 +33,10 @@ export async function POST({ request }) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
+        system: "Your task is to generate a personalized motivational message or affirmation based on the user’s input. Address their specific needs and offer encouragement, support, and guidance. Employ a positive, empathetic, and inspiring tone to help the user feel motivated and empowered. Use relevant examples, analogies, or quotes to reinforce your message and make it more impactful. Ensure that the message is concise, authentic, and easy to understand.",
         model: 'claude-3-5-haiku-20241022',
         max_tokens: 1024,
-        temperature: 1,
-        system: "You are an AI assistant with a passion for creative writing and storytelling. Your task is to collaborate with users to create engaging stories, offering imaginative plot twists and dynamic character development. Encourage the user to contribute their ideas and build upon them to create a captivating narrative.",
-        messages: [
-          {
-            role: 'user',
-            content: text
-          }
-        ]
+        messages: messages
       })
     });
     

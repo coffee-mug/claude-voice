@@ -39,21 +39,7 @@
   
   {#if transcribedText || responseText}
     <div class="w-full max-w-md mx-auto p-4 mt-4 bg-white rounded-lg shadow-md">
-      {#if transcribedText}
-        <div class="mb-4">
-          <h3 class="text-sm font-medium text-gray-500 mb-1">You said:</h3>
-          <p class="text-gray-800 bg-gray-100 p-3 rounded-md">{transcribedText}</p>
-        </div>
-      {/if}
-      
-      {#if responseText}
-        <div class="mb-4">
-          <h3 class="text-sm font-medium text-gray-500 mb-1">Claude's response:</h3>
-          <p class="text-gray-800 bg-blue-50 p-3 rounded-md">{responseText}</p>
-        </div>
-      {/if}
-      
-      {#if audioSrc}
+    {#if audioSrc}
         <div class="mt-4">
           <audio 
             bind:this={audioPlayer} 
