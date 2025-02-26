@@ -1,5 +1,6 @@
 import { GCP_API_KEY, GCP_PROJECT_ID } from '$env/static/private';
 import { error } from '@sveltejs/kit';
+import { Buffer } from 'node:buffer';
 
 /**
  * Convert text to SSML format for GCP Text-to-Speech
@@ -46,8 +47,8 @@ export async function POST({ request }) {
           ssml
         },
         voice: {
-          languageCode: 'fr-FR',
-          name: 'fr-FR-Neural2-A',  // Male voice
+          languageCode: 'en-US',
+          name: 'en-US-Neural2-F',  // Female voice
           ssmlGender: 'FEMALE'
         },
         audioConfig: {
