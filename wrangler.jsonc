@@ -27,13 +27,29 @@
    */
     "ai": {
       "binding": "AI"
-    }
+    },
+    "kv_namespaces": [
+      {
+        "binding": "USAGE_STORE",
+        "id": "10060ab8b4464217bae65a78f7914f1a"
+      }
+    ],
+    
+    "d1_databases": [
+      {
+        "binding": "DB",
+        "database_name": "claude-voice",
+        "database_id": "e3a72d8e-8d4e-42fb-b8c7-c1f3ffc4cd8b"
+      }
+    ],
 
   /**
    * Environment Variables
    * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
    */
-  // "vars": { "MY_VARIABLE": "production_value" },
+  "vars": { 
+    "DAILY_USAGE_LIMIT": "10.00" 
+  },
   /**
    * Note: Use secrets to store sensitive data.
    * https://developers.cloudflare.com/workers/configuration/secrets/

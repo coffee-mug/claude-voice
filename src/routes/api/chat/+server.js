@@ -1,11 +1,21 @@
 import { json } from '@sveltejs/kit';
 import { CLAUDE_API_KEY } from '$env/static/private';
+import { calculateClaudeUsage, trackUsage, checkUsageLimit } from '$lib/utils/usage-tracker';
 
 /**
  * Handles sending user text to Claude API and getting a response
  */
-export async function POST({ request }) {
+export async function POST({ request, platform }) {
   try {
+    // First check if we're within usage limits
+    const usageStatus = await checkUsageLimit(platform);
+    if (!usageStatus.withinLimit) {
+      return json({ 
+        error: 'Daily usage limit reached. Please try again tomorrow.',
+        usageStatus 
+      }, { status: 429 });
+    }
+    
     const { text, conversationHistory = [] } = await request.json();
     
     if (!text || typeof text !== 'string') {
@@ -33,7 +43,7 @@ export async function POST({ request }) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        system: "Your task is to generate a personalized motivational message or affirmation based on the user’s input. Address their specific needs and offer encouragement, support, and guidance. Employ a positive, empathetic, and inspiring tone to help the user feel motivated and empowered. Use relevant examples, analogies, or quotes to reinforce your message and make it more impactful. Ensure that the message is concise, authentic, and easy to understand.",
+        system: "Your task is to generate a personalized motivational message or affirmation based on the user's input. Address their specific needs and offer encouragement, support, and guidance. Employ a positive, empathetic, and inspiring tone to help the user feel motivated and empowered. Use relevant examples, analogies, or quotes to reinforce your message and make it more impactful. Ensure that the message is concise, authentic, and easy to understand.",
         model: 'claude-3-5-haiku-20241022',
         max_tokens: 1024,
         messages: messages
@@ -52,9 +62,19 @@ export async function POST({ request }) {
     const result = await response.json();
     const responseText = result.content[0].text;
     
+    // Track Claude usage
+    const usageData = calculateClaudeUsage(result);
+    await trackUsage(usageData, platform);
+    
     return json({ 
       responseText,
-      success: true 
+      success: true,
+      usage: {
+        service: 'claude',
+        inputTokens: usageData.inputTokens,
+        outputTokens: usageData.outputTokens,
+        cost: usageData.totalCost
+      }
     });
   } catch (error) {
     console.error('Error in Claude API service:', error);

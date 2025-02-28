@@ -1,4 +1,5 @@
 <script>
+    import { Mic } from 'lucide-svelte';
     import { onMount, onDestroy } from 'svelte';
     import { createEventDispatcher } from 'svelte';
   
@@ -187,6 +188,7 @@
   
   <div class="w-full max-w-md mx-auto p-4 bg-white rounded-lg shadow-md">
     <div class="flex flex-col items-center space-y-4">
+        <p class="text-sm text-blue-600 mt-2 text-center">Just click the blue button to start recording, then click the square to stop</p>
       <div class="w-full flex justify-center">
         {#if isRecording}
           <button 
@@ -200,11 +202,13 @@
         {:else}
           <button 
             on:click={() => startRecording()}
-            class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors"
+            class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-600 transition-colors"
             aria-label="Start Recording"
             type="button"
           >
-            <div class="w-6 h-6 bg-white rounded-full"></div>
+            <div class="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+              <Mic class="w-5 h-5 text-blue-500 font-bold"></Mic>
+            </div>
           </button>
         {/if}
       </div>

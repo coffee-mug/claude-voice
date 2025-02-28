@@ -1,6 +1,7 @@
 import { GCP_API_KEY, GCP_PROJECT_ID } from '$env/static/private';
-import { error } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import { Buffer } from 'node:buffer';
+import { calculateTTSUsage, trackUsage, checkUsageLimit } from '$lib/utils/usage-tracker';
 
 /**
  * Convert text to SSML format for GCP Text-to-Speech
@@ -25,20 +26,27 @@ function textToSSML(text) {
 /**
  * Handles converting text to speech using GCP Text-to-Speech API
  */
-export async function POST({ request }) {
+export async function POST({ request, platform }) {
   try {
+    // First check if we're within usage limits
+    const usageStatus = await checkUsageLimit(platform);
+    if (!usageStatus.withinLimit) {
+      return json({ 
+        error: 'Daily usage limit reached. Please try again tomorrow.',
+        usageStatus 
+      }, { status: 429 });
+    }
+    
     const { text, voiceSettings } = await request.json();
 
     if (!text || typeof text !== 'string') {
       throw error(400, 'Invalid or missing text');
     }
 
-    
-
     const whitelistedVoices = ['en-US-Neural2-F', 'en-US-Neural2-D', 'fr-FR-Neural2-A', 'fr-FR-Neural2-B'];
 
     if (whitelistedVoices.indexOf(voiceSettings.model) === -1) {
-        throw error(400)
+        throw error(400, 'Invalid voice model');
     }
     
     // Convert text to SSML format
@@ -56,7 +64,7 @@ export async function POST({ request }) {
         },
         voice: {
           languageCode: voiceSettings.language,
-          name: voiceSettings.model,  // Female voice
+          name: voiceSettings.model,
           ssmlGender: voiceSettings.gender
         },
         audioConfig: {
@@ -75,19 +83,27 @@ export async function POST({ request }) {
     
     const result = await response.json();
     
+    // Track TTS usage
+    const usageData = calculateTTSUsage(text, voiceSettings);
+    await trackUsage(usageData, platform);
+    
     // The API returns the audio content as a base64 encoded string
     const audioContent = result.audioContent;
     
     // Convert base64 to binary
     const binaryAudio = Buffer.from(audioContent, 'base64');
     
+    // Add usage metadata to headers
+    const headers = {
+      'Content-Type': 'audio/mp3',
+      'Content-Disposition': 'attachment; filename="response.mp3"',
+      'X-Usage-Service': 'gcp-tts',
+      'X-Usage-Characters': usageData.characters.toString(),
+      'X-Usage-Cost': usageData.totalCost.toString()
+    };
+    
     // Return the audio file
-    return new Response(binaryAudio, {
-      headers: {
-        'Content-Type': 'audio/mp3',
-        'Content-Disposition': 'attachment; filename="response.mp3"'
-      }
-    });
+    return new Response(binaryAudio, { headers });
   } catch (err) {
     console.error('Error in TTS service:', err);
     throw error(500, err.message || 'Failed to generate speech');
