@@ -24,7 +24,7 @@
     let voiceSettings = $state({
       language: 'en-US',
       gender: 'FEMALE',
-      model: 'en-US-Neural2-F'
+      model: 'en-US-Chirp-HD-F'
     });
     
     // Check usage status on mount and periodically

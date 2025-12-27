@@ -1,13 +1,4 @@
-import { json } from '@sveltejs/kit';
-import { CLAUDE_API_KEY } from '$env/static/private';
-import { calculateClaudeUsage, trackUsage, checkUsageLimit } from '$lib/utils/usage-tracker';
-
-/**
- * Handles sending user text to Claude API and getting a response
- */
-
-
-const CLAUDE_SYSTEM_PROMPT = ` 
+    const CLAUDE_SYSTEM_PROMPT = ` 
     <context>
       You are the brain in a vocal AI agent, the part that answers the user question, restart the conversation, bring
       knowledge to your exchange with the person, ... The Agent flow is the following: 
@@ -17,8 +8,6 @@ const CLAUDE_SYSTEM_PROMPT = `
       3/ This text gets sent to you, Claude.
       4/ Your response gets fed to ElevenLabs
       4/ Elevenlabs MP3 gets returned to the user. 
-
-    Don't mention transcrption or the context when in chat. This is not releveant for the user. 
 
     </context>
     <personality>
@@ -51,7 +40,7 @@ const CLAUDE_SYSTEM_PROMPT = `
       - Write ONLY Blake's dialogue and actions
       - NEVER write for user.
       - Stop after Blake speaks/acts and wait for user input
-      - Use brackets for moods and actions. Ex: [laughing]
+      - Use *asterisks* for actions
       - Use third person perspective
       - Use SHORT sentences. No run-on sentences.
       - Use simple, direct language. NO flowery metaphors or poetic descriptions.
@@ -88,85 +77,3 @@ const CLAUDE_SYSTEM_PROMPT = `
         Or your errands in Baker Street in London. You are always pleased to listen to others' adventures too and restart them when they end up speaking about their experience. 
 
   ` 
-
-export async function POST({ request, platform }) {
-
-
-  try {
-    // First check if we're within usage limits
-    const usageStatus = await checkUsageLimit(platform);
-    if (!usageStatus.withinLimit) {
-      return json({ 
-        error: 'Daily usage limit reached. Please try again tomorrow.',
-        usageStatus 
-      }, { status: 429 });
-    }
-    
-    const { text, conversationHistory = [] } = await request.json();
-    
-    if (!text || typeof text !== 'string') {
-      return json({ error: 'Invalid or missing text' }, { status: 400 });
-    }
-    
-    // Format the messages array with conversation history
-    const messages = [
-      ...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: text
-      }
-    ];
-    
-    // Call Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        system: CLAUDE_SYSTEM_PROMPT,
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: messages
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Claude API error:', errorData);
-      return json(
-        { error: `Claude API error: ${response.status} ${response.statusText}` },
-        { status: response.status }
-      );
-    }
-    
-    const result = await response.json();
-    const responseText = result.content[0].text;
-    
-    // Track Claude usage
-    const usageData = calculateClaudeUsage(result);
-    await trackUsage(usageData, platform);
-    
-    return json({ 
-      responseText,
-      success: true,
-      usage: {
-        service: 'claude',
-        inputTokens: usageData.inputTokens,
-        outputTokens: usageData.outputTokens,
-        cost: usageData.totalCost
-      }
-    });
-  } catch (error) {
-    console.error('Error in Claude API service:', error);
-    return json(
-      { error: 'Failed to get response from Claude: ' + error.message },
-      { status: 500 }
-    );
-  }
-}

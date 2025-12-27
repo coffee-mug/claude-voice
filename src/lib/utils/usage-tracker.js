@@ -17,7 +17,7 @@ const PRICING = {
   // Cloudflare Workers AI pricing
   CLOUDFLARE: {
     WHISPER: 0.00033     // $0.00033 per second of audio
-  }
+  },
 };
 
 /**

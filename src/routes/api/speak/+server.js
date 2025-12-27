@@ -1,4 +1,5 @@
-import { GCP_API_KEY, GCP_PROJECT_ID } from '$env/static/private';
+import { GCP_API_KEY, GCP_PROJECT_ID, ELEVEN_API_KEY } from '$env/static/private';
+import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
 import { error, json } from '@sveltejs/kit';
 import { Buffer } from 'node:buffer';
 import { calculateTTSUsage, trackUsage, checkUsageLimit } from '$lib/utils/usage-tracker';
@@ -27,85 +28,112 @@ function textToSSML(text) {
  * Handles converting text to speech using GCP Text-to-Speech API
  */
 export async function POST({ request, platform }) {
-  try {
-    // First check if we're within usage limits
-    const usageStatus = await checkUsageLimit(platform);
-    if (!usageStatus.withinLimit) {
-      return json({ 
-        error: 'Daily usage limit reached. Please try again tomorrow.',
-        usageStatus 
-      }, { status: 429 });
-    }
-    
-    const { text, voiceSettings } = await request.json();
+  const elevenlabs = new ElevenLabsClient({
+      apiKey: ELEVEN_API_KEY, // Defaults to process.env.ELEVENLABS_API_KEY
+  });
 
-    if (!text || typeof text !== 'string') {
-      throw error(400, 'Invalid or missing text');
-    }
 
-    const whitelistedVoices = ['en-US-Neural2-F', 'en-US-Neural2-D', 'fr-FR-Neural2-A', 'fr-FR-Neural2-B'];
+  const { text, voiceSettings } = await request.json();
 
-    if (whitelistedVoices.indexOf(voiceSettings.model) === -1) {
-        throw error(400, 'Invalid voice model');
+  console.log("HERE", elevenlabs)
+
+  const audio = await elevenlabs.textToSpeech.convert(
+    'FFXYdAYPzn8Tw8KiHZqg',
+    {
+      text,
+      modelId: 'eleven_v3',
+      outputFormat: 'mp3_44100_128', // output_format
     }
+  );
+
+  // Add usage metadata to headers
+  const headers = {
+    'Content-Type': 'audio/mp3',
+    'Content-Disposition': 'attachment; filename="response.mp3"',
+  };
+
+  // Return the audio file
+  return new Response(audio, { headers });
+
+  // try {
+  //   // First check if we're within usage limits
+  //   const usageStatus = await checkUsageLimit(platform);
+  //   if (!usageStatus.withinLimit) {
+  //     return json({ 
+  //       error: 'Daily usage limit reached. Please try again tomorrow.',
+  //       usageStatus 
+  //     }, { status: 429 });
+  //   }
     
-    // Convert text to SSML format
-    const ssml = textToSSML(text);
+    // const { text, voiceSettings } = await request.json();
+
+    // if (!text || typeof text !== 'string') {
+    //   throw error(400, 'Invalid or missing text');
+    // }
+
+    // const whitelistedVoices = ['en-US-Chirp-HD-F', 'en-US-Chirp-HD-D', 'fr-FR-Chirp-HD-D', 'fr-FR-Chirp-HD-F'];
+
+    // console.log("voiceSettings")
+
+    // if (whitelistedVoices.indexOf(voiceSettings.model) === -1) {
+    //     throw error(400, `Invalid voice model ${voiceSettings.model}`);
+    // }
     
-    // Call GCP Text-to-Speech API
-    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GCP_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        input: {
-          ssml
-        },
-        voice: {
-          languageCode: voiceSettings.language,
-          name: voiceSettings.model,
-          ssmlGender: voiceSettings.gender
-        },
-        audioConfig: {
-          audioEncoding: 'MP3',
-          speakingRate: 1.0,
-          pitch: 0
-        }
-      })
-    });
+    //  Convert text to SSML format
+    //  Update: leave it out for now, testing Chrip-HD voices models
+    // const ssml = textToSSML(text);
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('GCP Text-to-Speech API error:', errorData);
-      throw error(response.status, 'Failed to synthesize speech');
-    }
     
-    const result = await response.json();
+    //  Call GCP Text-to-Speech API
+    //  const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${GCP_API_KEY}`, {
+    //    method: 'POST',
+    //    headers: {
+    //      'Content-Type': 'application/json',
+    //    },
+    //    body: JSON.stringify({
+    //      input: {
+    //        text 
+    //      },
+    //      voice: {
+    //        languageCode: voiceSettings.language,
+    //        name: voiceSettings.model,
+    //        ssmlGender: voiceSettings.gender
+    //      },
+    //      audioConfig: {
+    //        audioEncoding: 'MP3',
+    //        speakingRate: 1.0,
+    //        pitch: 0
+    //      }
+    //    })
+    //  });
     
-    // Track TTS usage
-    const usageData = calculateTTSUsage(text, voiceSettings);
-    await trackUsage(usageData, platform);
+    // if (!response.ok) {
+    //   const errorData = await response.json();
+    //   console.error('GCP Text-to-Speech API error:', errorData);
+    //   throw error(response.status, 'Failed to synthesize speech');
+    // }
     
-    // The API returns the audio content as a base64 encoded string
-    const audioContent = result.audioContent;
+    // const result = await response.json();
     
-    // Convert base64 to binary
-    const binaryAudio = Buffer.from(audioContent, 'base64');
+    // // Track TTS usage
+    // const usageData = calculateTTSUsage(text, voiceSettings);
+    // await trackUsage(usageData, platform);
     
-    // Add usage metadata to headers
-    const headers = {
-      'Content-Type': 'audio/mp3',
-      'Content-Disposition': 'attachment; filename="response.mp3"',
-      'X-Usage-Service': 'gcp-tts',
-      'X-Usage-Characters': usageData.characters.toString(),
-      'X-Usage-Cost': usageData.totalCost.toString()
-    };
+    // // The API returns the audio content as a base64 encoded string
+    // const audioContent = result.audioContent;
     
-    // Return the audio file
-    return new Response(binaryAudio, { headers });
-  } catch (err) {
-    console.error('Error in TTS service:', err);
-    throw error(500, err.message || 'Failed to generate speech');
-  }
+    // // Convert base64 to binary
+    // const binaryAudio = Buffer.from(audioContent, 'base64');
+    
+    // // Add usage metadata to headers
+    // const headers = {
+    //   'Content-Type': 'audio/mp3',
+    //   'Content-Disposition': 'attachment; filename="response.mp3"',
+    //   'X-Usage-Service': 'gcp-tts',
+    //   'X-Usage-Characters': usageData.characters.toString(),
+    //   'X-Usage-Cost': usageData.totalCost.toString()
+    // };
+    
+    // // Return the audio file
+    // return new Response(binaryAudio, { headers });
 }

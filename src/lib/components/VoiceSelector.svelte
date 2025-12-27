@@ -16,12 +16,12 @@
     // Voice models for each combination
     const voiceModels = {
       'en-US': {
-        'FEMALE': 'en-US-Neural2-F',
-        'MALE': 'en-US-Neural2-D'
+        'FEMALE': 'en-US-Chirp-HD-F',
+        'MALE': 'en-US-Chirp-HD-D'
       },
       'fr-FR': {
-        'FEMALE': 'fr-FR-Neural2-A',
-        'MALE': 'fr-FR-Neural2-B'
+        'FEMALE': 'fr-FR-Chirp-HD-F',
+        'MALE': 'fr-FR-Chirp-HD-D'
       }
     };
     
