@@ -38,7 +38,7 @@ export async function POST({ request, platform }) {
   console.log("HERE", elevenlabs)
 
   const audio = await elevenlabs.textToSpeech.convert(
-    'FFXYdAYPzn8Tw8KiHZqg',
+    'kdmDKE6EkgrWrrykO9Qt',
     {
       text,
       modelId: 'eleven_v3',
