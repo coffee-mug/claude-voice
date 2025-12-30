@@ -9,42 +9,33 @@ import { calculateTTSUsage, trackUsage, checkUsageLimit } from '$lib/utils/usage
  * @param {string} text - Plain text to convert
  * @returns {string} - Formatted SSML string
  */
-function textToSSML(text) {
-  // Escape special characters
-  const escapedText = text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-  
-  // Add basic SSML tags
-  // For a simple MVP, we'll just add basic structure
-  // In a full app, you might want to add pauses, emphasis, etc.
-  return `<speak>${escapedText}</speak>`;
-}
-
 /**
  * Handles converting text to speech using GCP Text-to-Speech API
  */
 export async function POST({ request, platform }) {
-  const elevenlabs = new ElevenLabsClient({
-      apiKey: ELEVEN_API_KEY, // Defaults to process.env.ELEVENLABS_API_KEY
-  });
+  const { text } = await request.json();
 
-
-  const { text, voiceSettings } = await request.json();
-
-  console.log("HERE", elevenlabs)
-
-  const audio = await elevenlabs.textToSpeech.convert(
-    'kdmDKE6EkgrWrrykO9Qt',
+  const response = await fetch(
+    'https://api.elevenlabs.io/v1/text-to-speech/kdmDKE6EkgrWrrykO9Qt',
     {
-      text,
-      modelId: 'eleven_v3',
-      outputFormat: 'mp3_44100_128', // output_format
+      method: 'POST',
+      headers: {
+        'xi-api-key': ELEVEN_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        model_id: 'eleven_v3',
+        output_format: 'mp3_44100_128',
+      }),
     }
   );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('ElevenLabs API error:', errorText);
+    throw error(500, 'TTS conversion failed');
+  }
 
   // Add usage metadata to headers
   const headers = {
@@ -53,7 +44,7 @@ export async function POST({ request, platform }) {
   };
 
   // Return the audio file
-  return new Response(audio, { headers });
+  return new Response(response.body, { headers });
 
   // try {
   //   // First check if we're within usage limits
